@@ -90,7 +90,7 @@ if uploaded_file:
     axs[1].set_xlabel("Angle 0°→180°")
     axs[1].set_ylabel("Pression")
     axs[1].grid(True)
-    axs[1].legend()
+  
 
     # 3️⃣ Résumé cycle + sliders
     rpm = 60000 / n
@@ -106,3 +106,4 @@ if uploaded_file:
 
 else:
     st.info("👉 Chargez un fichier CSV pour commencer.")
+
