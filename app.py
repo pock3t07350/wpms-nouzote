@@ -55,7 +55,7 @@ if uploaded_file:
 
     # --- DÉCALAGE ---
     dec_total_samples = int((dec_global / 360) * n) % n
-    colors = {"CH1": "blue", "CH2": "green", "CH3": "red", "CH4": "purple"}
+    colors = {"CH1": "red", "CH2": "blue", "CH3": "green", "CH4": "purple"}
     signals = {}
     for ch, dec_deg in dec_ch.items():
         dec_samples = (int((dec_deg / 360) * n) + dec_total_samples) % n
@@ -106,4 +106,5 @@ if uploaded_file:
 
 else:
     st.info("👉 Chargez un fichier CSV pour commencer.")
+
 
