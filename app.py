@@ -30,9 +30,9 @@ if uploaded_file:
         st.warning("Aucun cycle détecté dans le fichier CSV.")
         st.stop()
 
-    # --- CONVERSION VOLT → BAR ---
+    # --- CONVERSION VOLT → BAR (0-100 bar) ---
     def volt_to_bar(v):
-        return (v - 0.8) * 62.5
+        return (v - 0.8) * 31.25
 
     for ch in ["CH1", "CH2", "CH3", "CH4"]:
         df[ch] = volt_to_bar(df[ch])
@@ -112,4 +112,3 @@ if uploaded_file:
 
 else:
     st.info("👉 Chargez un fichier CSV pour commencer.")
-
