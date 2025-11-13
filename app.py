@@ -18,10 +18,12 @@ if uploaded_file:
         df = pd.read_csv(uploaded_file, skiprows=27, header=None)
         df.columns = ["Number", "Date", "Time", "us", "CH1", "CH2", "CH3", "CH4", "CH5",
                       "extra1", "extra2", "extra3", "dummy1", "dummy2"]
+
         # Détection des fronts sur CH5
         seuil_ch5 = 23
         fronts = (df["CH5"] > seuil_ch5) & (df["CH5"].shift(1) <= seuil_ch5)
         indices_fronts = df.index[fronts].tolist()
+
     except Exception as e:
         st.error(f"Erreur lors du chargement du CSV : {e}")
         st.stop()
@@ -30,9 +32,11 @@ if uploaded_file:
         st.warning("Aucun cycle détecté dans le fichier CSV.")
         st.stop()
 
-    # --- CONVERSION VOLT → BAR (0-100 bar) ---
+    # --- CONVERSION VOLT → BAR (0-100 bar) AVEC 270 Ω ---
+    # 4 mA = 1.08 V , 20 mA = 5.40 V
+    # conversion = (V - 1.08) * 23.148148
     def volt_to_bar(v):
-        return (v - 0.8) * 31.25
+        return (v - 1.08) * 23.148148
 
     for ch in ["CH1", "CH2", "CH3", "CH4"]:
         df[ch] = volt_to_bar(df[ch])
@@ -64,6 +68,7 @@ if uploaded_file:
     dec_total_samples = int((dec_global / 360) * n) % n
     colors = {"CH1": "red", "CH2": "blue", "CH3": "green", "CH4": "purple"}
     signals = {}
+
     for ch, dec_deg in dec_ch.items():
         dec_samples = (int((dec_deg / 360) * n) + dec_total_samples) % n
         signals[ch] = np.roll(cycle[ch], dec_samples)
@@ -92,6 +97,7 @@ if uploaded_file:
         decompression = sig[-mid:][::-1]
         axs[1].plot(angles_half, compression, label=f"{ch} compression", color=colors[ch])
         axs[1].plot(angles_half, decompression, "--", label=f"{ch} décompression", color=colors[ch])
+
     axs[1].set_xlim(-10, 190)
     axs[1].set_ylim(min_val - marge, max_val + marge)
     axs[1].set_xlabel("Angle 0°→180°")
