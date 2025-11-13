@@ -30,6 +30,13 @@ if uploaded_file:
         st.warning("Aucun cycle détecté dans le fichier CSV.")
         st.stop()
 
+    # --- CONVERSION VOLT → BAR ---
+    def volt_to_bar(v):
+        return (v - 0.8) * 62.5
+
+    for ch in ["CH1", "CH2", "CH3", "CH4"]:
+        df[ch] = volt_to_bar(df[ch])
+
     # --- SLIDERS DÉCALAGE ---
     st.sidebar.header("Réglages de décalage")
     dec_global = st.sidebar.slider("Décalage global", 0, 360, 165)
@@ -68,7 +75,7 @@ if uploaded_file:
     for ch, sig in signals.items():
         axs[0].plot(cycle["Angle"], sig, label=ch, color=colors[ch])
     axs[0].set_xlim(-10, 390)
-    axs[0].set_ylabel("Pression")
+    axs[0].set_ylabel("Pression (bar)")
     axs[0].set_title(f"Cycle {cycle_num+1}")
     axs[0].grid(True)
     axs[0].legend()
@@ -88,9 +95,8 @@ if uploaded_file:
     axs[1].set_xlim(-10, 190)
     axs[1].set_ylim(min_val - marge, max_val + marge)
     axs[1].set_xlabel("Angle 0°→180°")
-    axs[1].set_ylabel("Pression")
+    axs[1].set_ylabel("Pression (bar)")
     axs[1].grid(True)
-  
 
     # 3️⃣ Résumé cycle + sliders
     rpm = 60000 / n
@@ -106,5 +112,4 @@ if uploaded_file:
 
 else:
     st.info("👉 Chargez un fichier CSV pour commencer.")
-
 
