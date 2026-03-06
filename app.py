@@ -16,10 +16,11 @@ uploaded_file = st.file_uploader("📂 Charger un fichier CSV", type=["csv"])
 if uploaded_file:
 
     try:
-        # --- LECTURE TEXTE POUR TROUVER LE HEADER ---
+        # --- LECTURE TEXTE ---
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore")
         lines = content.splitlines()
 
+        # --- DETECTION DEBUT DONNEES ---
         start_line = None
         for i, line in enumerate(lines):
             if line.startswith("Number,Date,Time"):
@@ -27,14 +28,21 @@ if uploaded_file:
                 break
 
         if start_line is None:
-            st.error("Impossible de trouver la ligne de début des données.")
+            st.error("Impossible de trouver le début des données.")
             st.stop()
 
         # --- LECTURE DATAFRAME ---
         df = pd.read_csv(io.StringIO(content), skiprows=start_line)
 
-        # --- GARDE SEULEMENT LES COLONNES UTILES ---
+        # --- COLONNES UTILES ---
         df = df[["Number","Date","Time","us","CH1","CH2","CH3","CH4","CH5"]]
+
+        # --- CONVERSION NUMERIQUE ---
+        for col in ["CH1","CH2","CH3","CH4","CH5"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        df = df.dropna()
+        df = df.reset_index(drop=True)
 
     except Exception as e:
         st.error(f"Erreur lors du chargement du CSV : {e}")
@@ -42,7 +50,9 @@ if uploaded_file:
 
     # --- DETECTION FRONTS CH5 ---
     seuil_ch5 = 23
+
     fronts = (df["CH5"] > seuil_ch5) & (df["CH5"].shift(1) <= seuil_ch5)
+
     indices_fronts = df.index[fronts].tolist()
 
     if len(indices_fronts) < 2:
@@ -61,86 +71,85 @@ if uploaded_file:
     # --- SLIDERS ---
     st.sidebar.header("Réglages de décalage")
 
-    dec_global = st.sidebar.slider("Décalage global",0,360,165)
+    dec_global = st.sidebar.slider("Décalage global", 0, 360, 165)
 
     dec_ch = {
-        "CH1": st.sidebar.slider("CH1",0,360,90),
-        "CH2": st.sidebar.slider("CH2",0,360,270),
-        "CH3": st.sidebar.slider("CH3",0,360,0),
-        "CH4": st.sidebar.slider("CH4",0,360,180),
+        "CH1": st.sidebar.slider("CH1", 0, 360, 90),
+        "CH2": st.sidebar.slider("CH2", 0, 360, 270),
+        "CH3": st.sidebar.slider("CH3", 0, 360, 0),
+        "CH4": st.sidebar.slider("CH4", 0, 360, 180),
     }
 
-    # --- NAVIGATION CYCLES ---
+    # --- NAVIGATION ---
     st.sidebar.header("Navigation")
 
     cycle_num = st.sidebar.number_input(
         "Numéro de cycle",
         0,
-        len(indices_fronts)-2,
+        len(indices_fronts) - 2,
         0,
         step=1
     )
 
     # --- EXTRACTION CYCLE ---
     start = indices_fronts[cycle_num]
-    end = indices_fronts[cycle_num+1]
+    end = indices_fronts[cycle_num + 1]
 
     cycle = df.iloc[start:end].reset_index(drop=True)
 
     n = len(cycle)
 
-    cycle["Angle"] = np.linspace(0,360,n,endpoint=False)
+    cycle["Angle"] = np.linspace(0, 360, n, endpoint=False)
 
     # --- DECALAGE ---
-    dec_total_samples = int((dec_global/360)*n) % n
+    dec_total_samples = int((dec_global / 360) * n) % n
 
     colors = {
-        "CH1":"red",
-        "CH2":"blue",
-        "CH3":"green",
-        "CH4":"purple"
+        "CH1": "red",
+        "CH2": "blue",
+        "CH3": "green",
+        "CH4": "purple"
     }
 
     signals = {}
 
-    for ch,dec_deg in dec_ch.items():
+    for ch, dec_deg in dec_ch.items():
 
-        dec_samples = (int((dec_deg/360)*n) + dec_total_samples) % n
+        dec_samples = (int((dec_deg / 360) * n) + dec_total_samples) % n
 
-        signals[ch] = np.roll(cycle[ch],dec_samples)
+        signals[ch] = np.roll(cycle[ch], dec_samples)
 
     # --- GRAPHIQUES ---
-    fig,axs = plt.subplots(
+    fig, axs = plt.subplots(
         3,
         1,
-        figsize=(12,8),
-        gridspec_kw={'height_ratios':[1,1,0.3]}
+        figsize=(12, 8),
+        gridspec_kw={'height_ratios': [1, 1, 0.3]}
     )
 
     # --- CYCLE COMPLET ---
-    for ch,sig in signals.items():
-        axs[0].plot(cycle["Angle"],sig,label=ch,color=colors[ch])
+    for ch, sig in signals.items():
+        axs[0].plot(cycle["Angle"], sig, label=ch, color=colors[ch])
 
-    axs[0].set_xlim(-10,390)
+    axs[0].set_xlim(-10, 390)
     axs[0].set_ylabel("Pression (bar)")
-    axs[0].set_title(f"Cycle {cycle_num+1}")
+    axs[0].set_title(f"Cycle {cycle_num + 1}")
     axs[0].grid(True)
     axs[0].legend()
 
     # --- COMPRESSION / DECOMPRESSION ---
-    mid = n//2
+    mid = n // 2
 
-    angles_half = np.linspace(0,180,mid,endpoint=False)
+    angles_half = np.linspace(0, 180, mid, endpoint=False)
 
     min_val = min([sig.min() for sig in signals.values()])
     max_val = max([sig.max() for sig in signals.values()])
 
-    marge = 0.05*(max_val-min_val)
+    marge = 0.05 * (max_val - min_val)
 
-    for ch,sig in signals.items():
+    for ch, sig in signals.items():
 
         compression = sig[:mid]
-
         decompression = sig[-mid:][::-1]
 
         axs[1].plot(
@@ -158,8 +167,8 @@ if uploaded_file:
             color=colors[ch]
         )
 
-    axs[1].set_xlim(-10,190)
-    axs[1].set_ylim(min_val-marge,max_val+marge)
+    axs[1].set_xlim(-10, 190)
+    axs[1].set_ylim(min_val - marge, max_val + marge)
 
     axs[1].set_xlabel("Angle 0°→180°")
     axs[1].set_ylabel("Pression (bar)")
@@ -167,9 +176,9 @@ if uploaded_file:
     axs[1].grid(True)
 
     # --- RESUME ---
-    rpm = 60000/n
+    rpm = 60000 / n
 
-    slider_text = " | ".join([f"{k}: {v}°" for k,v in dec_ch.items()])
+    slider_text = " | ".join([f"{k}: {v}°" for k, v in dec_ch.items()])
 
     axs[2].axis("off")
 
