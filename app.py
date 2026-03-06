@@ -57,7 +57,7 @@ if uploaded_file:
         st.stop()
 
     # --- DETECTION TRIGGER ---
-    seuil_ch5 = 23
+    seuil_ch5 = 20
 
     fronts = (df["CH5"] > seuil_ch5) & (df["CH5"].shift(1) <= seuil_ch5)
 
@@ -179,3 +179,4 @@ if uploaded_file:
 
 else:
     st.info("Chargez un fichier CSV")
+
